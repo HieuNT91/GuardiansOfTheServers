@@ -1,0 +1,13 @@
+[Unit]
+Description=Monitoring script for Sashimi
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c "source /storage/hiu/miniconda3/etc/profile.d/conda.sh && conda activate base && /bin/bash /home/hieunt/GuardiansOfTheServers/scripts/master_monitor.sh"
+User=hieunt
+WorkingDirectory=/home/hieunt/GuardiansOfTheServers
+Environment="PATH=/storage/hiu/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+[Install]
+WantedBy=multi-user.target

@@ -4,8 +4,8 @@ SSH_KEY_PATH = "~/.ssh/id_rsa"  # or None if using password
 
 # threshold for CPU/GPU temperature
 
-CPU_TEMP_THRESHOLD = 85
-GPU_TEMP_THRESHOLD = 85
+CPU_TEMP_THRESHOLD = 88
+GPU_TEMP_THRESHOLD = 88
 OTHER_TEMP_THRESHOLD = 80
 SERVER_DOWN_TIME = 120
 
