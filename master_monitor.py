@@ -6,6 +6,7 @@ import paramiko
 import subprocess
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
+import json 
 
 import config
 
@@ -20,6 +21,45 @@ last_uptime = {}
 # Track when a server was first detected down
 down_since = {}
 
+LAST_UPTIME_FILE = "last_uptime.json"
+DOWN_SINCE_FILE = "down_since.json"
+
+def load_last_uptime():
+    """Load last uptime values from a JSON file."""
+    if os.path.exists(LAST_UPTIME_FILE):
+        try:
+            with open(LAST_UPTIME_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_last_uptime(data):
+    """Save last uptime values to a JSON file."""
+    try:
+        with open(LAST_UPTIME_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"[Error] Failed to save last uptime data: {e}")
+
+def load_down_since():
+    """Load down_since values from a JSON file."""
+    if os.path.exists(DOWN_SINCE_FILE):
+        try:
+            with open(DOWN_SINCE_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_down_since(data):
+    """Save down_since values to a JSON file."""
+    try:
+        with open(DOWN_SINCE_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"[Error] Failed to save down_since data: {e}")
+        
 def send_discord_alert(message: str):
     """
     Send an alert to Discord, prefixing the message with
@@ -182,11 +222,15 @@ def get_system_uptime(name: str, address: str) -> float:
     try:
         output = run_command(name, address, "cat /proc/uptime")
         return float(output.split()[0])
-    except:
+    except Exception as e:
+        print(f"[Error] Failed to get uptime for {name}: {e}")
         return 0.0
 
 def monitor():
     """Check each server for temperature, unexpected reboots, and downtime."""
+    global last_uptime
+    last_uptime = load_last_uptime() 
+    down_since = load_down_since()
     for server in config.SERVERS:
         server_name = server["name"]
         server_addr = server["address"]
@@ -194,28 +238,31 @@ def monitor():
         # 1) Check if server is up
         reachable = is_server_reachable(server_name, server_addr)
         if not reachable:
-            # If first time seeing it down, record the time
             if server_name not in down_since:
-                down_since[server_name] = time.time()
+                down_since[server_name] = datetime.now().timestamp()
+                save_down_since(down_since)
+                send_discord_alert(f":x: **{server_name}** is down!")
             else:
-                # If down > SERVER_DOWN_TIME => alert
-                if time.time() - down_since[server_name] > config.SERVER_DOWN_TIME:
-                    send_discord_alert(f":warning: **{server_name}** has been down for more than {config.SERVER_DOWN_TIME} seconds!")
+                # Calculate how long it's been down
+                down_time = datetime.now().timestamp() - down_since[server_name]
+                # if server_name != "hakao": # 
+                send_discord_alert(f":warning: **{server_name}** has been down for {int(down_time)} seconds!")
             continue
         else:
-            # If it was down, but not anymore
+            # If server was previously down but now up, notify and remove from down_since
             if server_name in down_since:
+                down_time = datetime.now().timestamp() - down_since[server_name]
+                send_discord_alert(f":white_check_mark: **{server_name}** is back up after {int(down_time)} seconds!")
                 del down_since[server_name]
-
+                save_down_since(down_since)
+                
         # 2) Temperature checks
         temps = get_temperatures(server_name, server_addr)
-
         # CPU
         if temps["cpu"] > config.CPU_TEMP_THRESHOLD:
             send_discord_alert(
                 f":hot_face: **{server_name}** CPU temp {temps['cpu']}°C exceeded threshold ({config.CPU_TEMP_THRESHOLD}°C)!"
             )
-
         # GPU
         if temps["gpu"] > config.GPU_TEMP_THRESHOLD:
             gpu_procs = get_gpu_processes(server_name, server_addr)
@@ -238,10 +285,11 @@ def monitor():
         # 3) Check for unexpected reboots (uptime)
         current_uptime = get_system_uptime(server_name, server_addr)
         if server_name in last_uptime:
-            if current_uptime < last_uptime[server_name]:
+            if current_uptime + 300 < last_uptime[server_name]:  # If uptime is less, the server rebooted
                 send_discord_alert(f":warning: **{server_name}** rebooted unexpectedly!")
         last_uptime[server_name] = current_uptime
-
+        save_last_uptime(last_uptime)
+        
 def main_loop():
     # while True:
         monitor()

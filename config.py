@@ -4,10 +4,11 @@ SSH_KEY_PATH = "~/.ssh/id_rsa"  # or None if using password
 
 # threshold for CPU/GPU temperature
 
-CPU_TEMP_THRESHOLD = 88
-GPU_TEMP_THRESHOLD = 88
+CPU_TEMP_THRESHOLD = 89
+GPU_TEMP_THRESHOLD = 89
 OTHER_TEMP_THRESHOLD = 80
-SERVER_DOWN_TIME = 120
+# SERVER_DOWN_TIME = 60 * 5 - 1  # 5 minutes
+SERVER_DOWN_TIME = 0  # 5 minutes
 
 
 CURRENT_SERVER_NAME = "rtx_sashimi"

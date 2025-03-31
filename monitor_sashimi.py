@@ -6,13 +6,34 @@ import requests
 import paramiko
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
-
 import config
+import json
+
+LAST_UPTIME_FILE = "last_uptime.json"
 
 load_dotenv()
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 # SSH_PASSWORD = None  # or "your-ssh-password" if not using key-based auth
+
+def load_last_uptime():
+    """Load last uptime values from a JSON file."""
+    if os.path.exists(LAST_UPTIME_FILE):
+        try:
+            with open(LAST_UPTIME_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_last_uptime(data):
+    """Save last uptime values to a JSON file."""
+    try:
+        with open(LAST_UPTIME_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"[Error] Failed to save last uptime data: {e}")
+
 
 def send_discord_alert(message: str):
     """
@@ -41,7 +62,7 @@ def is_sashimi_reachable() -> bool:
         keypath = config.SSH_KEY_PATH
         if keypath and os.path.isfile(os.path.expanduser(keypath)):
             client.connect(
-                hostname="sashimi",
+                hostname="rtx_sashimi",
                 username=config.SSH_USERNAME,
                 key_filename=os.path.expanduser(keypath),
                 look_for_keys=False,
@@ -49,7 +70,7 @@ def is_sashimi_reachable() -> bool:
             )
         else:
             client.connect(
-                hostname="sashimi",
+                hostname="rtx_sashimi",
                 username=config.SSH_USERNAME,
                 # password=SSH_PASSWORD,
                 timeout=5
